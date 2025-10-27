@@ -345,3 +345,100 @@ External orgs can onboard themselves and connect via federated SSO.
 Admin portal + automated licensing makes this monetizable.
 
 Cloudflare Workers + D1/KV gives you serverless scalability without managing traditional backend servers.
+
+---
+
+## 🚀 Quick Deployment to Cloudflare
+
+### Automated Deployment
+
+The fastest way to deploy is using our automated setup script:
+
+```bash
+# Run the automated deployment script
+./deploy-setup.sh
+```
+
+The script will guide you through:
+1. Installing dependencies
+2. Authenticating with Cloudflare
+3. Creating required resources (D1 database, KV namespaces)
+4. Setting up secrets and environment variables
+5. Running database migrations
+6. Deploying the Worker
+
+### Manual Deployment
+
+If you prefer manual control or the script fails:
+
+```bash
+# 1. Install Wrangler CLI
+npm install -g wrangler
+
+# 2. Authenticate
+wrangler login
+
+# 3. Install dependencies
+npm install
+
+# 4. Create resources
+wrangler d1 create openauth_db
+wrangler kv:namespace create SESSIONS
+wrangler kv:namespace create SESSIONS --preview
+
+# 5. Update wrangler.toml with the generated IDs
+
+# 6. Set secrets
+wrangler secret put JWT_SECRET
+
+# 7. Run migrations
+wrangler d1 execute openauth_db --file=./database/migrations/001_initial_schema.sql
+wrangler d1 execute openauth_db --file=./database/migrations/002_add_sso_billing.sql
+
+# 8. Deploy
+npm run deploy
+```
+
+### Deployment Documentation
+
+📚 **Comprehensive Guides:**
+- **[Complete Deployment Guide](./docs/CLOUDFLARE_DEPLOY.md)** - Full step-by-step instructions with screenshots and troubleshooting
+- **[Quick Reference Guide](./docs/QUICK_DEPLOY.md)** - Condensed checklist for experienced users
+
+### Accessing the Cloudflare Dashboard
+
+After deployment, access your application through the new Cloudflare dashboard:
+
+1. Visit [https://dash.cloudflare.com](https://dash.cloudflare.com)
+2. Navigate to **Workers & Pages** in the left sidebar
+3. Click on **openauth-enterprise**
+4. View:
+   - **Metrics**: Request volume, errors, performance
+   - **Logs**: Real-time request logs
+   - **Settings**: Environment variables, triggers, domains
+   - **Deployments**: Version history and rollback options
+
+### Verify Your Deployment
+
+```bash
+# Test the health endpoint
+curl https://openauth-enterprise.YOUR_SUBDOMAIN.workers.dev/health
+
+# Should return: {"status":"healthy"}
+
+# View real-time logs
+wrangler tail
+```
+
+### Cost Estimate
+
+- **Free Tier**: Up to 100,000 requests/day (great for development)
+- **Paid Tier**: Starting at $5/month for 10M requests/month
+- **Typical Monthly Cost**: $10-20 for moderate production usage
+
+### Need Help?
+
+- 📖 Read the [Complete Deployment Guide](./docs/CLOUDFLARE_DEPLOY.md)
+- 💬 Join [Cloudflare Discord](https://discord.gg/cloudflaredev)
+- 🐛 Report issues on [GitHub Issues](https://github.com/kedster/MultiTenant-SSO/issues)
+
