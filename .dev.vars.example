@@ -1,0 +1,10 @@
+# Local Development Environment Variables
+# Copy this file to .dev.vars and fill in your values
+# .dev.vars is gitignored and will not be committed
+
+# JWT Secret for signing tokens
+# Generate with: openssl rand -base64 32
+JWT_SECRET=your-development-jwt-secret-here
+
+# Environment name
+ENVIRONMENT=development
