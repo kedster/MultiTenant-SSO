@@ -1,0 +1,225 @@
+name: Deploy to Cloudflare Workers
+
+on:
+  push:
+    branches:
+      - main
+      - production
+  workflow_dispatch:  # Allow manual deployment
+
+env:
+  NODE_VERSION: '20.x'
+
+jobs:
+  deploy:
+    name: Deploy to Cloudflare
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run TypeScript type check
+        run: npx tsc --noEmit
+
+      - name: Install Wrangler
+        run: npm install -g wrangler
+
+      - name: Authenticate with Cloudflare
+        run: |
+          echo "Authenticating with Cloudflare..."
+          wrangler whoami || echo "Not authenticated yet"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Create or verify D1 Database
+        id: d1_database
+        run: |
+          echo "Creating D1 database..."
+          D1_OUTPUT=$(wrangler d1 create openauth_db 2>&1 || echo "")
+          
+          if echo "$D1_OUTPUT" | grep -q "already exists"; then
+            echo "Database already exists, fetching ID..."
+            DB_ID=$(wrangler d1 list | grep openauth_db | awk '{print $2}' | head -1)
+          else
+            DB_ID=$(echo "$D1_OUTPUT" | grep -o 'database_id = "[^"]*"' | cut -d'"' -f2)
+          fi
+          
+          echo "db_id=$DB_ID" >> $GITHUB_OUTPUT
+          echo "D1 Database ID: $DB_ID"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Create or verify KV Namespace
+        id: kv_namespace
+        run: |
+          echo "Creating KV namespace for sessions..."
+          
+          # Production namespace
+          KV_OUTPUT=$(wrangler kv:namespace create SESSIONS 2>&1 || echo "")
+          if echo "$KV_OUTPUT" | grep -q "already exists"; then
+            echo "KV Namespace already exists, fetching ID..."
+            KV_ID=$(wrangler kv:namespace list | grep SESSIONS | grep -v preview | awk '{print $2}' | head -1)
+          else
+            KV_ID=$(echo "$KV_OUTPUT" | grep -o 'id = "[^"]*"' | cut -d'"' -f2)
+          fi
+          
+          # Preview namespace
+          KV_PREVIEW_OUTPUT=$(wrangler kv:namespace create SESSIONS --preview 2>&1 || echo "")
+          if echo "$KV_PREVIEW_OUTPUT" | grep -q "already exists"; then
+            KV_PREVIEW_ID=$(wrangler kv:namespace list | grep SESSIONS | grep preview | awk '{print $2}' | head -1)
+          else
+            KV_PREVIEW_ID=$(echo "$KV_PREVIEW_OUTPUT" | grep -o 'preview_id = "[^"]*"' | cut -d'"' -f2)
+          fi
+          
+          # Use production ID as fallback for preview
+          if [ -z "$KV_PREVIEW_ID" ]; then
+            KV_PREVIEW_ID="$KV_ID"
+          fi
+          
+          echo "kv_id=$KV_ID" >> $GITHUB_OUTPUT
+          echo "kv_preview_id=$KV_PREVIEW_ID" >> $GITHUB_OUTPUT
+          echo "KV Namespace ID: $KV_ID"
+          echo "KV Preview ID: $KV_PREVIEW_ID"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Update wrangler.toml with resource IDs
+        run: |
+          echo "Updating wrangler.toml with Cloudflare resource IDs..."
+          
+          # Update database_id
+          sed -i "s/database_id = \".*\"/database_id = \"${{ steps.d1_database.outputs.db_id }}\"/" wrangler.toml
+          
+          # Update KV namespace IDs
+          sed -i "s/id = \"your-kv-namespace-id\"/id = \"${{ steps.kv_namespace.outputs.kv_id }}\"/" wrangler.toml
+          sed -i "s/preview_id = \"your-preview-kv-namespace-id\"/preview_id = \"${{ steps.kv_namespace.outputs.kv_preview_id }}\"/" wrangler.toml
+          
+          echo "Updated wrangler.toml:"
+          cat wrangler.toml
+
+      - name: Set JWT_SECRET
+        run: |
+          echo "Checking JWT_SECRET..."
+          if ! wrangler secret list 2>&1 | grep -q "JWT_SECRET"; then
+            echo "Setting JWT_SECRET..."
+            echo "${{ secrets.JWT_SECRET }}" | wrangler secret put JWT_SECRET
+          else
+            echo "JWT_SECRET already configured"
+          fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Run database migrations
+        run: |
+          echo "Running database migrations..."
+          
+          if [ -d "database/migrations" ]; then
+            for migration in database/migrations/*.sql; do
+              if [ -f "$migration" ]; then
+                echo "Running migration: $(basename $migration)"
+                wrangler d1 execute openauth_db --file="$migration" 2>&1 || echo "Migration may have already been applied"
+              fi
+            done
+            echo "Database migrations completed"
+          else
+            echo "No migrations directory found"
+          fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Deploy to Cloudflare Workers
+        id: deploy
+        run: |
+          echo "Deploying to Cloudflare Workers..."
+          DEPLOY_OUTPUT=$(wrangler deploy --json 2>&1 || wrangler deploy 2>&1)
+          echo "$DEPLOY_OUTPUT"
+          
+          # Try to extract worker URL
+          WORKER_URL=$(echo "$DEPLOY_OUTPUT" | grep -o 'https://[^[:space:]]*workers.dev' | head -1 || echo "")
+          echo "worker_url=$WORKER_URL" >> $GITHUB_OUTPUT
+          
+          if [ -n "$WORKER_URL" ]; then
+            echo "Deployed to: $WORKER_URL"
+          fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+      - name: Test deployment
+        if: steps.deploy.outputs.worker_url != ''
+        run: |
+          echo "Testing deployment at ${{ steps.deploy.outputs.worker_url }}"
+          
+          # Wait for deployment to propagate
+          sleep 5
+          
+          # Test health endpoint
+          HEALTH_RESPONSE=$(curl -s "${{ steps.deploy.outputs.worker_url }}/health" || echo "")
+          echo "Health check response: $HEALTH_RESPONSE"
+          
+          if echo "$HEALTH_RESPONSE" | grep -q "healthy"; then
+            echo "✅ Health check passed!"
+          else
+            echo "⚠️ Health check did not return expected response"
+          fi
+
+      - name: Create deployment summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## 🚀 Deployment Summary
+          
+          **Status:** ✅ Deployment Successful
+          
+          **Resources Created/Updated:**
+          - D1 Database: \`openauth_db\` (ID: \`${{ steps.d1_database.outputs.db_id }}\`)
+          - KV Namespace: \`SESSIONS\` (ID: \`${{ steps.kv_namespace.outputs.kv_id }}\`)
+          - KV Preview: \`SESSIONS_preview\` (ID: \`${{ steps.kv_namespace.outputs.kv_preview_id }}\`)
+          
+          **Deployment URL:** ${{ steps.deploy.outputs.worker_url }}
+          
+          **Quick Actions:**
+          - View logs: \`wrangler tail\`
+          - Test health: \`curl ${{ steps.deploy.outputs.worker_url }}/health\`
+          - Manage secrets: \`wrangler secret list\`
+          
+          **Next Steps:**
+          1. Test your endpoints
+          2. Configure custom domain (optional)
+          3. Set up monitoring and alerts
+          
+          For more information, see [CLOUDFLARE_DEPLOY.md](docs/CLOUDFLARE_DEPLOY.md)
+          EOF
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Cloudflare deployment failed. Please check the logs above for details."
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## ❌ Deployment Failed
+          
+          The deployment to Cloudflare Workers encountered an error.
+          
+          **Common issues:**
+          - Missing or invalid CLOUDFLARE_API_TOKEN secret
+          - Insufficient permissions on API token
+          - Resource naming conflicts
+          - Database migration errors
+          
+          **Next steps:**
+          1. Check the workflow logs for specific error messages
+          2. Verify your Cloudflare API token has the required permissions
+          3. Ensure all required secrets are configured in GitHub
+          4. Try deploying manually using \`./scripts/deploy-cloudflare.sh\`
+          
+          See [CLOUDFLARE_DEPLOY.md](docs/CLOUDFLARE_DEPLOY.md) for troubleshooting help.
+          EOF

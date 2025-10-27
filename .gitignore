@@ -48,6 +48,10 @@ wrangler.toml.backup
 .dev.vars
 worker-configuration.d.ts
 
+# Deployment artifacts
+deployment-info.txt
+*.backup
+
 # Database
 *.db
 *.sqlite
