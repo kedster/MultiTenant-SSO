@@ -1,0 +1,39 @@
+{
+  "name": "openauth-enterprise",
+  "version": "1.0.0",
+  "description": "Multi-tenant SSO solution with Cloudflare Workers",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "jest",
+    "lint": "eslint src/**/*.ts",
+    "format": "prettier --write src/**/*.ts"
+  },
+  "keywords": [
+    "sso",
+    "multi-tenant",
+    "oauth2",
+    "oidc",
+    "cloudflare-workers"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20231218.0",
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "jest": "^29.5.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.3.0",
+    "wrangler": "^3.0.0"
+  },
+  "dependencies": {
+    "jsonwebtoken": "^9.0.0",
+    "openid-client": "^5.6.0",
+    "passport-saml": "^4.0.0"
+  }
+}
