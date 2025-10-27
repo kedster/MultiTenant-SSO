@@ -277,14 +277,20 @@ Before marking complete, the following should be tested:
 
 ## Maintenance Notes
 
-This documentation should be updated when:
+This documentation should be reviewed **quarterly** and updated when:
 
 1. **Cloudflare UI changes**: Update dashboard screenshots/instructions
-2. **Wrangler updates**: Verify command compatibility
-3. **Pricing changes**: Update cost estimates
+2. **Wrangler updates**: Verify command compatibility (check monthly)
+3. **Pricing changes**: Update cost estimates (review quarterly)
 4. **New features**: Document new deployment options
-5. **Security advisories**: Update security best practices
+5. **Security advisories**: Update security best practices immediately
 6. **Dependency updates**: Update version requirements
+
+**Recommended Schedule**:
+- **Monthly**: Check for Wrangler CLI updates
+- **Quarterly**: Full documentation review, pricing verification, dashboard UI check
+- **As needed**: Security updates, new feature documentation
+- **After major Cloudflare releases**: Comprehensive review of all commands and UI guidance
 
 ## Success Criteria
 
