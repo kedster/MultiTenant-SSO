@@ -1,0 +1,22 @@
+name = "openauth-enterprise"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+workers_dev = true
+
+# KV Namespaces for session storage
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "your-kv-namespace-id"
+preview_id = "your-preview-kv-namespace-id"
+
+# D1 Database for multi-tenant data
+[[d1_databases]]
+binding = "DB"
+database_name = "openauth_db"
+database_id = "your-database-id"
+preview_database_id = "your-preview-database-id"
+
+# Environment variables (set in Cloudflare dashboard or .dev.vars)
+[vars]
+JWT_SECRET = "change-me-in-production"
+ENVIRONMENT = "development"
