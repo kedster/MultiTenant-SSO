@@ -12,17 +12,22 @@ export interface JWTPayload {
   roles: string[];
   allowedApps: string[];
   type: 'access' | 'refresh';
+  exp?: number;
+  iat?: number;
+  iss?: string;
+  aud?: string | string[];
 }
 
 /**
  * Sign a JWT token
  */
-export function signToken(payload: JWTPayload, secret: string, expiresIn: string): string {
-  return jwt.sign(payload, secret, {
+export function signToken(payload: JWTPayload, secret: string, expiresIn: string | number): string {
+  // Cast to any to avoid type issues with jsonwebtoken version compatibility
+  return jwt.sign(payload as any, secret, {
     expiresIn,
     issuer: 'openauth-enterprise',
     audience: 'openauth-apps',
-  });
+  } as any);
 }
 
 /**
