@@ -350,95 +350,73 @@ Cloudflare Workers + D1/KV gives you serverless scalability without managing tra
 
 ## 🚀 Quick Deployment to Cloudflare
 
-### Automated Deployment
+### ⚡ ONE-COMMAND DEPLOYMENT (Recommended)
 
-The fastest way to deploy is using our automated setup script:
-
-```bash
-# Run the automated deployment script
-./deploy-setup.sh
-```
-
-The script will guide you through:
-1. Installing dependencies
-2. Authenticating with Cloudflare
-3. Creating required resources (D1 database, KV namespaces)
-4. Setting up secrets and environment variables
-5. Running database migrations
-6. Deploying the Worker
-
-### Manual Deployment
-
-If you prefer manual control or the script fails:
+Deploy in minutes with our fully automated script:
 
 ```bash
-# 1. Install Wrangler CLI
-npm install -g wrangler
-
-# 2. Authenticate
-wrangler login
-
-# 3. Install dependencies
-npm install
-
-# 4. Create resources
-wrangler d1 create openauth_db
-wrangler kv:namespace create SESSIONS
-wrangler kv:namespace create SESSIONS --preview
-
-# 5. Update wrangler.toml with the generated IDs
-
-# 6. Set secrets
-wrangler secret put JWT_SECRET
-
-# 7. Run migrations
-wrangler d1 execute openauth_db --file=./database/migrations/001_initial_schema.sql
-wrangler d1 execute openauth_db --file=./database/migrations/002_add_sso_billing.sql
-
-# 8. Deploy
-npm run deploy
+./scripts/deploy-cloudflare.sh
 ```
 
-### Deployment Documentation
+**That's it!** The script automatically:
+- ✅ Installs Wrangler CLI if needed
+- ✅ Authenticates with Cloudflare (browser login or API token)
+- ✅ Creates D1 database and KV namespaces
+- ✅ Updates configuration with resource IDs
+- ✅ Generates and sets JWT_SECRET
+- ✅ Runs database migrations
+- ✅ Deploys the worker
+- ✅ Tests deployment health
+- ✅ Saves deployment info
 
-📚 **Comprehensive Guides:**
-- **[Complete Deployment Guide](./docs/CLOUDFLARE_DEPLOY.md)** - Full step-by-step instructions with screenshots and troubleshooting
-- **[Quick Reference Guide](./docs/QUICK_DEPLOY.md)** - Condensed checklist for experienced users
+**Result**: Your SSO system live on Cloudflare in ~3-5 minutes!
 
-### Accessing the Cloudflare Dashboard
+### 🤖 GitHub Actions (CI/CD)
 
-After deployment, access your application through the new Cloudflare dashboard:
+For automated deployments on every push:
 
-1. Visit [https://dash.cloudflare.com](https://dash.cloudflare.com)
-2. Navigate to **Workers & Pages** in the left sidebar
-3. Click on **openauth-enterprise**
-4. View:
-   - **Metrics**: Request volume, errors, performance
-   - **Logs**: Real-time request logs
-   - **Settings**: Environment variables, triggers, domains
-   - **Deployments**: Version history and rollback options
+1. **Add secrets to GitHub:**
+   - `CLOUDFLARE_API_TOKEN` - Your Cloudflare API token
+   - `JWT_SECRET` - Generate with `openssl rand -base64 32`
 
-### Verify Your Deployment
+2. **Push to main branch:**
+   ```bash
+   git push origin main
+   ```
+
+3. Deployment runs automatically! View in the **Actions** tab.
+
+**Or trigger manually:**
+- GitHub → Actions → "Deploy to Cloudflare Workers" → "Run workflow"
+
+### 📚 Deployment Documentation
+
+- 🚀 **[Quick Deploy Guide](./QUICK_DEPLOY.md)** - Get started in 2 minutes
+- 🔧 **[Automation Guide](./scripts/README.md)** - Using deployment scripts and CI/CD
+- 📖 **[Complete Manual Guide](./docs/CLOUDFLARE_DEPLOY.md)** - Full step-by-step with troubleshooting
+
+### ✅ Verify Your Deployment
 
 ```bash
 # Test the health endpoint
 curl https://openauth-enterprise.YOUR_SUBDOMAIN.workers.dev/health
-
-# Should return: {"status":"healthy"}
+# Response: {"status":"healthy"}
 
 # View real-time logs
 wrangler tail
 ```
 
-### Cost Estimate
+### 💰 Cost Estimate
 
-- **Free Tier**: Up to 100,000 requests/day (great for development)
-- **Paid Tier**: Starting at $5/month for 10M requests/month
-- **Typical Monthly Cost**: $10-20 for moderate production usage
+- **Free Tier**: 100,000 requests/day (perfect for dev/testing)
+- **Paid Tier**: $5/month for 10M requests/month
+- **Typical Cost**: $10-20/month for moderate production use
 
-### Need Help?
+### 🆘 Need Help?
 
-- 📖 Read the [Complete Deployment Guide](./docs/CLOUDFLARE_DEPLOY.md)
-- 💬 Join [Cloudflare Discord](https://discord.gg/cloudflaredev)
-- 🐛 Report issues on [GitHub Issues](https://github.com/kedster/MultiTenant-SSO/issues)
+- 📖 [Quick Deploy Guide](./QUICK_DEPLOY.md)
+- 🔧 [Deployment Automation](./scripts/README.md)
+- 📚 [Full Manual Guide](./docs/CLOUDFLARE_DEPLOY.md)
+- 💬 [Cloudflare Discord](https://discord.gg/cloudflaredev)
+- 🐛 [GitHub Issues](https://github.com/kedster/MultiTenant-SSO/issues)
 

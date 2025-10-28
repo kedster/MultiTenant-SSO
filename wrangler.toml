@@ -16,7 +16,9 @@ database_name = "openauth_db"
 database_id = "your-database-id"
 preview_database_id = "your-preview-database-id"
 
-# Environment variables (set in Cloudflare dashboard or .dev.vars)
+# Environment variables (non-sensitive)
 [vars]
-JWT_SECRET = "change-me-in-production"
-ENVIRONMENT = "development"
+ENVIRONMENT = "production"
+
+# Secrets (sensitive data - set using: wrangler secret put SECRET_NAME)
+# JWT_SECRET - Set using: wrangler secret put JWT_SECRET
