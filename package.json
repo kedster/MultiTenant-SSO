@@ -33,7 +33,7 @@
   },
   "dependencies": {
     "jsonwebtoken": "^9.0.0",
-    "openid-client": "^5.6.0",
+    "openid-client": "^6.8.1",
     "passport-saml": "^4.0.0"
   }
 }
